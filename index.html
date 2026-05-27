@@ -1,19 +1,239 @@
-<div class="reels">
-    <div class="reel" id="reel1">🐅</div>
-    <div class="reel" id="reel2">🍒</div>
-    <div class="reel" id="reel3">⭐</div>
-</div>
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🌽 Colheita de Milho</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    
+    body {
+        font-family: 'Arial', sans-serif;
+        background: linear-gradient(#4ade80, #166534);
+        color: white;
+        text-align: center;
+        min-height: 100vh;
+    }
 
-<div class="info">
-    <div class="balance">Saldo: R$ <span id="saldo">500.00</span></div>
-    <div class="bet">Aposta: R$ <span id="aposta">10.00</span></div>
-</div>
+    .container {
+        max-width: 500px;
+        margin: 0 auto;
+        padding: 15px;
+    }
 
-<div class="controls">
-    <div class="bet-controls">
-        <button class="btn bet-btn" id="diminuir">-10</button>
-        <button class="btn bet-btn" id="aumentar">+10</button>
+    .header {
+        background: #166534;
+        padding: 15px;
+        border-radius: 15px;
+        margin-bottom: 15px;
+    }
+
+    .saldo {
+        font-size: 28px;
+        font-weight: bold;
+        margin: 10px 0;
+    }
+
+    .farm {
+        background: #14532d;
+        border: 6px solid #854d0e;
+        border-radius: 20px;
+        padding: 20px;
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 15px;
+        margin-bottom: 20px;
+    }
+
+    .planta {
+        background: #052e16;
+        border-radius: 15px;
+        padding: 15px 10px;
+        cursor: pointer;
+        transition: all 0.3s;
+        border: 3px solid #854d0e;
+    }
+
+    .planta:hover {
+        transform: scale(1.08);
+    }
+
+    .pronto {
+        animation: balancar 0.8s infinite alternate;
+    }
+
+    @keyframes balancar {
+        from { transform: rotate(-8deg); }
+        to { transform: rotate(8deg); }
+    }
+
+    .milho {
+        font-size: 45px;
+    }
+
+    .info-planta {
+        font-size: 14px;
+        margin-top: 8px;
+    }
+
+    .btn {
+        background: #eab308;
+        color: #166534;
+        border: none;
+        padding: 15px 25px;
+        font-size: 18px;
+        font-weight: bold;
+        border-radius: 12px;
+        margin: 8px;
+        cursor: pointer;
+    }
+
+    .upgrades {
+        margin-top: 20px;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .upgrade-btn {
+        background: #854d0e;
+        padding: 12px;
+        border-radius: 10px;
+        text-align: left;
+        margin: 5px;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <div class="header">
+      <h1>🌽 COLHEITA DE MILHO 🌽</h1>
+      <div class="saldo">R$ <span id="dinheiro">250</span></div>
     </div>
-    <button class="btn spin-btn" id="spinBtn">🌀 GIRAR TIGRAÇO 🌀</button>
-    <div class="result" id="result"></div>
-</div>
+
+    <div class="farm" id="farm"></div>
+
+    <div>
+      <button class="btn" onclick="venderTudo()">VENDER TODA COLHEITA</button>
+    </div>
+
+    <div class="upgrades">
+      <h2>🛒 Melhorias</h2>
+      <button class="upgrade-btn" onclick="comprarUpgrade(1)">🌱 Mais Plantas (+1) - R$ 300</button>
+      <button class="upgrade-btn" onclick="comprarUpgrade(2)">⚡ Crescimento Rápido - R$ 800</button>
+      <button class="upgrade-btn" onclick="comprarUpgrade(3)">🧤 Luvas de Colheita - R$ 1200</button>
+    </div>
+
+    <p style="margin-top:20px; font-size:14px;">Clique nas plantas maduras para colher!</p>
+  </div>
+
+  <script>
+    let dinheiro = 250;
+    let plantas = [
+      { madura: true, tempo: 0 },
+      { madura: false, tempo: 8 },
+      { madura: true, tempo: 0 },
+      { madura: false, tempo: 12 },
+      { madura: true, tempo: 0 },
+      { madura: false, tempo: 6 },
+      { madura: false, tempo: 15 },
+      { madura: true, tempo: 0 },
+      { madura: false, tempo: 9 }
+    ];
+
+    let bonusColheita = 1;     // multiplicador
+    let crescimentoRapido = 1; // velocidade de crescimento
+
+    const farm = document.getElementById('dinheiro');
+
+    function atualizarDinheiro() {
+      document.getElementById('dinheiro').textContent = dinheiro;
+    }
+
+    function criarPlantas() {
+      const farmDiv = document.getElementById('farm');
+      farmDiv.innerHTML = '';
+
+      plantas.forEach((planta, index) => {
+        const div = document.createElement('div');
+        div.className = `planta ${planta.madura ? 'pronto' : ''}`;
+        
+        div.innerHTML = planta.madura 
+          ? `<div class="milho">🌽</div><div class="info-planta">Pronto!</div>`
+          : `<div class="milho">🌱</div><div class="info-planta">Crescendo...</div>`;
+        
+        div.onclick = () => colher(index);
+        farmDiv.appendChild(div);
+      });
+    }
+
+    function colher(index) {
+      if (plantas[index].madura) {
+        const ganho = Math.floor(Math.random() * 35) + 25;
+        dinheiro += Math.floor(ganho * bonusColheita);
+        
+        plantas[index].madura = false;
+        plantas[index].tempo = 8 + Math.floor(Math.random() * 8);
+        
+        atualizarDinheiro();
+        criarPlantas();
+      }
+    }
+
+    function venderTudo() {
+      let total = 0;
+      plantas.forEach((planta, i) => {
+        if (planta.madura) {
+          total += Math.floor((Math.random() * 35) + 25);
+          plantas[i].madura = false;
+          plantas[i].tempo = 10;
+        }
+      });
+      dinheiro += Math.floor(total * bonusColheita);
+      atualizarDinheiro();
+      criarPlantas();
+    }
+
+    function comprarUpgrade(tipo) {
+      if (tipo === 1 && dinheiro >= 300) { // Mais plantas
+        dinheiro -= 300;
+        plantas.push({ madura: false, tempo: 12 });
+        alert("🌱 +1 Planta adicionada!");
+      }
+      else if (tipo === 2 && dinheiro >= 800) { // Crescimento rápido
+        dinheiro -= 800;
+        crescimentoRapido = 1.6;
+        alert("⚡ Crescimento mais rápido ativado!");
+      }
+      else if (tipo === 3 && dinheiro >= 1200) { // Luvas
+        dinheiro -= 1200;
+        bonusColheita = 1.8;
+        alert("🧤 Bônus de colheita ativado!");
+      }
+      else {
+        alert("Dinheiro insuficiente!");
+        return;
+      }
+      atualizarDinheiro();
+    }
+
+    // Sistema de crescimento automático
+    setInterval(() => {
+      plantas.forEach(planta => {
+        if (!planta.madura) {
+          planta.tempo -= crescimentoRapido;
+          if (planta.tempo <= 0) {
+            planta.madura = true;
+          }
+        }
+      });
+      criarPlantas();
+    }, 1200);
+
+    // Inicializa o jogo
+    criarPlantas();
+    atualizarDinheiro();
+  </script>
+</body>
+</html>
