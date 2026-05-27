@@ -1,239 +1,89 @@
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>🌽 Colheita de Milho</title>
-  <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    
-    body {
-        font-family: 'Arial', sans-serif;
-        background: linear-gradient(#4ade80, #166534);
-        color: white;
-        text-align: center;
-        min-height: 100vh;
-    }
+-- === CONFIGURAÇÃO ===
+local milhoItem = "milho"           -- Item que o jogador recebe ao colher
+local quantidadePorColheita = 8     -- Quantidade de milho por planta
+local tempoCrescimento = 60         -- Tempo em segundos para crescer (60 = 1 minuto)
 
-    .container {
-        max-width: 500px;
-        margin: 0 auto;
-        padding: 15px;
-    }
+ESX = exports["es_extended"]:getSharedObject() -- ou QBCore se for QBCore
 
-    .header {
-        background: #166534;
-        padding: 15px;
-        border-radius: 15px;
-        margin-bottom: 15px;
-    }
+-- Coordenadas das plantas (você pode adicionar várias)
+local plantasMilho = {
+    vector3(1234.56, -4321.09, 30.0),
+    vector3(1240.12, -4318.45, 30.0),
+    -- Adicione mais aqui...
+}
 
-    .saldo {
-        font-size: 28px;
-        font-weight: bold;
-        margin: 10px 0;
-    }
+local plantasPlantadas = {} -- Armazena plantas plantadas
 
-    .farm {
-        background: #14532d;
-        border: 6px solid #854d0e;
-        border-radius: 20px;
-        padding: 20px;
-        display: grid;
-        grid-template-columns: repeat(3, 1fr);
-        gap: 15px;
-        margin-bottom: 20px;
-    }
+-- ===================== COMANDO PARA PLANTAR =====================
+RegisterCommand('plantarmilho', function(source)
+    local xPlayer = ESX.GetPlayerFromId(source)
+    local ped = GetPlayerPed(source)
+    local coords = GetEntityCoords(ped)
 
-    .planta {
-        background: #052e16;
-        border-radius: 15px;
-        padding: 15px 10px;
-        cursor: pointer;
-        transition: all 0.3s;
-        border: 3px solid #854d0e;
-    }
+    for _, plantCoord in pairs(plantasMilho) do
+        if #(coords - plantCoord) < 3.0 then
+            if xPlayer.getInventoryItem('semente_milho').count >= 1 then
+                xPlayer.removeInventoryItem('semente_milho', 1)
+                
+                plantasPlantadas[plantCoord] = {
+                    tempoPlantado = GetGameTimer(),
+                    coords = plantCoord
+                }
+                
+                TriggerClientEvent('ox_lib:notify', source, {
+                    title = 'Plantação',
+                    description = 'Milho plantado! Espere crescer...',
+                    type = 'success'
+                })
+                return
+            else
+                TriggerClientEvent('ox_lib:notify', source, {description = 'Você não tem semente de milho!', type = 'error'})
+                return
+            end
+        end
+    end
+end)
 
-    .planta:hover {
-        transform: scale(1.08);
-    }
+-- ===================== COLHER =====================
+RegisterNetEvent('colherMilho')
+AddEventHandler('colherMilho', function(plantCoord)
+    local source = source
+    local xPlayer = ESX.GetPlayerFromId(source)
+    local plant = plantasPlantadas[plantCoord]
 
-    .pronto {
-        animation: balancar 0.8s infinite alternate;
-    }
-
-    @keyframes balancar {
-        from { transform: rotate(-8deg); }
-        to { transform: rotate(8deg); }
-    }
-
-    .milho {
-        font-size: 45px;
-    }
-
-    .info-planta {
-        font-size: 14px;
-        margin-top: 8px;
-    }
-
-    .btn {
-        background: #eab308;
-        color: #166534;
-        border: none;
-        padding: 15px 25px;
-        font-size: 18px;
-        font-weight: bold;
-        border-radius: 12px;
-        margin: 8px;
-        cursor: pointer;
-    }
-
-    .upgrades {
-        margin-top: 20px;
-        display: flex;
-        flex-direction: column;
-        gap: 10px;
-    }
-
-    .upgrade-btn {
-        background: #854d0e;
-        padding: 12px;
-        border-radius: 10px;
-        text-align: left;
-        margin: 5px;
-    }
-  </style>
-</head>
-<body>
-
-  <div class="container">
-    <div class="header">
-      <h1>🌽 COLHEITA DE MILHO 🌽</h1>
-      <div class="saldo">R$ <span id="dinheiro">250</span></div>
-    </div>
-
-    <div class="farm" id="farm"></div>
-
-    <div>
-      <button class="btn" onclick="venderTudo()">VENDER TODA COLHEITA</button>
-    </div>
-
-    <div class="upgrades">
-      <h2>🛒 Melhorias</h2>
-      <button class="upgrade-btn" onclick="comprarUpgrade(1)">🌱 Mais Plantas (+1) - R$ 300</button>
-      <button class="upgrade-btn" onclick="comprarUpgrade(2)">⚡ Crescimento Rápido - R$ 800</button>
-      <button class="upgrade-btn" onclick="comprarUpgrade(3)">🧤 Luvas de Colheita - R$ 1200</button>
-    </div>
-
-    <p style="margin-top:20px; font-size:14px;">Clique nas plantas maduras para colher!</p>
-  </div>
-
-  <script>
-    let dinheiro = 250;
-    let plantas = [
-      { madura: true, tempo: 0 },
-      { madura: false, tempo: 8 },
-      { madura: true, tempo: 0 },
-      { madura: false, tempo: 12 },
-      { madura: true, tempo: 0 },
-      { madura: false, tempo: 6 },
-      { madura: false, tempo: 15 },
-      { madura: true, tempo: 0 },
-      { madura: false, tempo: 9 }
-    ];
-
-    let bonusColheita = 1;     // multiplicador
-    let crescimentoRapido = 1; // velocidade de crescimento
-
-    const farm = document.getElementById('dinheiro');
-
-    function atualizarDinheiro() {
-      document.getElementById('dinheiro').textContent = dinheiro;
-    }
-
-    function criarPlantas() {
-      const farmDiv = document.getElementById('farm');
-      farmDiv.innerHTML = '';
-
-      plantas.forEach((planta, index) => {
-        const div = document.createElement('div');
-        div.className = `planta ${planta.madura ? 'pronto' : ''}`;
+    if plant and (GetGameTimer() - plant.tempoPlantado) >= (tempoCrescimento * 1000) then
+        xPlayer.addInventoryItem(milhoItem, quantidadePorColheita)
         
-        div.innerHTML = planta.madura 
-          ? `<div class="milho">🌽</div><div class="info-planta">Pronto!</div>`
-          : `<div class="milho">🌱</div><div class="info-planta">Crescendo...</div>`;
+        TriggerClientEvent('ox_lib:notify', source, {
+            title = 'Colheita',
+            description = 'Você colheu '..quantidadePorColheita..' milhos!',
+            type = 'success'
+        })
         
-        div.onclick = () => colher(index);
-        farmDiv.appendChild(div);
-      });
-    }
+        plantasPlantadas[plantCoord] = nil -- Remove a planta
+    else
+        TriggerClientEvent('ox_lib:notify', source, {description = 'O milho ainda não cresceu!', type = 'error'})
+    end
+end)
 
-    function colher(index) {
-      if (plantas[index].madura) {
-        const ganho = Math.floor(Math.random() * 35) + 25;
-        dinheiro += Math.floor(ganho * bonusColheita);
+-- ===================== VENDER =====================
+RegisterNetEvent('venderMilho')
+AddEventHandler('venderMilho', function()
+    local source = source
+    local xPlayer = ESX.GetPlayerFromId(source)
+    local qtdMilho = xPlayer.getInventoryItem(milhoItem).count
+
+    if qtdMilho > 0 then
+        local pagamento = qtdMilho * 12  -- R$12 por milho
+        xPlayer.removeInventoryItem(milhoItem, qtdMilho)
+        xPlayer.addMoney(pagamento)
         
-        plantas[index].madura = false;
-        plantas[index].tempo = 8 + Math.floor(Math.random() * 8);
-        
-        atualizarDinheiro();
-        criarPlantas();
-      }
-    }
-
-    function venderTudo() {
-      let total = 0;
-      plantas.forEach((planta, i) => {
-        if (planta.madura) {
-          total += Math.floor((Math.random() * 35) + 25);
-          plantas[i].madura = false;
-          plantas[i].tempo = 10;
-        }
-      });
-      dinheiro += Math.floor(total * bonusColheita);
-      atualizarDinheiro();
-      criarPlantas();
-    }
-
-    function comprarUpgrade(tipo) {
-      if (tipo === 1 && dinheiro >= 300) { // Mais plantas
-        dinheiro -= 300;
-        plantas.push({ madura: false, tempo: 12 });
-        alert("🌱 +1 Planta adicionada!");
-      }
-      else if (tipo === 2 && dinheiro >= 800) { // Crescimento rápido
-        dinheiro -= 800;
-        crescimentoRapido = 1.6;
-        alert("⚡ Crescimento mais rápido ativado!");
-      }
-      else if (tipo === 3 && dinheiro >= 1200) { // Luvas
-        dinheiro -= 1200;
-        bonusColheita = 1.8;
-        alert("🧤 Bônus de colheita ativado!");
-      }
-      else {
-        alert("Dinheiro insuficiente!");
-        return;
-      }
-      atualizarDinheiro();
-    }
-
-    // Sistema de crescimento automático
-    setInterval(() => {
-      plantas.forEach(planta => {
-        if (!planta.madura) {
-          planta.tempo -= crescimentoRapido;
-          if (planta.tempo <= 0) {
-            planta.madura = true;
-          }
-        }
-      });
-      criarPlantas();
-    }, 1200);
-
-    // Inicializa o jogo
-    criarPlantas();
-    atualizarDinheiro();
-  </script>
-</body>
-</html>
+        TriggerClientEvent('ox_lib:notify', source, {
+            title = 'Venda',
+            description = 'Você vendeu '..qtdMilho..' milhos por R$'..pagamento,
+            type = 'success'
+        })
+    else
+        TriggerClientEvent('ox_lib:notify', source, {description = 'Você não tem milho!', type = 'error'})
+    end
+end)
