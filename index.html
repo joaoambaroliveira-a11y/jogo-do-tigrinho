@@ -1,186 +1,251 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-<meta charset="UTF-8">
-<title>🌽 Colheita de Milho</title>
-<style>
-    body {
-        font-family: Arial, sans-serif;
-        text-align: center;
-        background: linear-gradient(#4a7043, #2e4a2a);
-        color: white;
-        margin: 0;
-        padding: 20px;
-    }
-    h1 {
-        margin: 10px;
-        text-shadow: 0 0 10px yellow;
-    }
-    #game {
-        width: 800px;
-        height: 500px;
-        background: #5c8b4e;
-        border: 8px solid #3a5a33;
-        margin: 20px auto;
-        position: relative;
-        overflow: hidden;
-        border-radius: 10px;
-    }
-    .corn {
-        position: absolute;
-        font-size: 50px;
-        cursor: pointer;
-        transition: transform 0.2s;
-        user-select: none;
-    }
-    .corn:hover {
-        transform: scale(1.2);
-    }
-    .corn.growing { font-size: 30px; }
-    .corn.ready { font-size: 55px; animation: shake 0.5s infinite; }
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🌽 Colheita de Milho</title>
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
 
-    @keyframes shake {
-        0%, 100% { transform: rotate(-5deg); }
-        50% { transform: rotate(5deg); }
-    }
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #1e4d2b, #3a8f4e);
+            color: white;
+            text-align: center;
+            min-height: 100vh;
+        }
 
-    #info {
-        font-size: 24px;
-        margin: 10px;
-    }
-    button {
-        padding: 12px 20px;
-        font-size: 18px;
-        margin: 8px;
-        background: #f4a261;
-        color: white;
-        border: none;
-        border-radius: 8px;
-        cursor: pointer;
-    }
-    button:hover {
-        background: #e76f51;
-    }
-</style>
+        header {
+            padding: 20px;
+            background: rgba(0, 0, 0, 0.3);
+        }
+
+        h1 {
+            font-size: 2.8em;
+            text-shadow: 0 0 15px #ffeb3b;
+        }
+
+        #hud {
+            font-size: 1.4em;
+            margin: 15px 0;
+            display: flex;
+            justify-content: center;
+            gap: 40px;
+            flex-wrap: wrap;
+        }
+
+        #game-container {
+            width: 900px;
+            height: 520px;
+            margin: 20px auto;
+            background: #2e6b3f;
+            border: 12px solid #1e4a2b;
+            border-radius: 15px;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 0 30px rgba(0, 0, 0, 0.6);
+        }
+
+        .corn {
+            position: absolute;
+            font-size: 55px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            user-select: none;
+        }
+
+        .corn:hover {
+            transform: scale(1.25) rotate(8deg);
+        }
+
+        .corn.growing { font-size: 35px; }
+        .corn.ready { 
+            font-size: 62px; 
+            animation: readyShake 0.6s infinite alternate;
+        }
+
+        @keyframes readyShake {
+            from { transform: rotate(-8deg); }
+            to { transform: rotate(8deg); }
+        }
+
+        .harvested {
+            animation: harvestEffect 0.4s forwards;
+        }
+
+        @keyframes harvestEffect {
+            0% { transform: scale(1); }
+            100% { transform: scale(0); opacity: 0; }
+        }
+
+        .controls {
+            margin: 20px;
+        }
+
+        button {
+            padding: 14px 22px;
+            margin: 8px;
+            font-size: 1.1em;
+            background: #f4a261;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+
+        button:hover {
+            background: #e76f51;
+            transform: translateY(-3px);
+        }
+
+        #message {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.8);
+            padding: 15px 30px;
+            border-radius: 10px;
+            font-size: 1.3em;
+            display: none;
+        }
+    </style>
 </head>
 <body>
 
-    <h1>🌽 Fazenda do Milho 🌽</h1>
-    <div id="info">
-        Milhos colhidos: <span id="score">0</span> | 
-        Dinheiro: R$ <span id="money">0</span>
+    <header>
+        <h1>🌽 Colheita de Milho 🌽</h1>
+    </header>
+
+    <div id="hud">
+        <div>Milhos Colhidos: <strong id="score">0</strong></div>
+        <div>Dinheiro: <strong>R$ <span id="money">0</span></strong></div>
+        <div>Velocidade: <strong id="speed-level">1</strong></div>
     </div>
 
-    <div id="game"></div>
+    <div id="game-container"></div>
 
-    <button onclick="plantAll()">🌱 Plantar Todos</button>
-    <button onclick="sellAll()">💰 Vender Todos</button>
-    <button onclick="upgradeSpeed()">⚡ Upgrade Velocidade (R$50)</button>
+    <div class="controls">
+        <button onclick="plantAll()">🌱 Plantar Todos</button>
+        <button onclick="sellAll()">💰 Vender Todos</button>
+        <button onclick="upgradeSpeed()">⚡ Melhorar Velocidade (-R$80)</button>
+    </div>
 
     <script>
         let score = 0;
-        let money = 0;
-        let growthSpeed = 3000; // milissegundos
+        let money = 150;
+        let growthSpeed = 2800;
+        let level = 1;
 
-        const game = document.getElementById('game');
+        const gameContainer = document.getElementById('game-container');
         const scoreEl = document.getElementById('score');
         const moneyEl = document.getElementById('money');
+        const speedEl = document.getElementById('speed-level');
 
-        // Cria 20 pés de milho
-        function createCorn() {
-            game.innerHTML = '';
-            for (let i = 0; i < 20; i++) {
+        function createCornField() {
+            gameContainer.innerHTML = '';
+            
+            for (let i = 0; i < 24; i++) {
                 const corn = document.createElement('div');
                 corn.className = 'corn growing';
                 corn.textContent = '🌱';
-                corn.style.left = Math.random() * 90 + '%';
-                corn.style.top = Math.random() * 85 + '%';
                 
-                corn.dataset.stage = 0; // 0 = semente, 1 = crescendo, 2 = pronto
+                // Posição aleatória
+                corn.style.left = Math.random() * 88 + '%';
+                corn.style.top = Math.random() * 82 + '%';
                 
-                corn.onclick = () => harvest(corn);
+                corn.dataset.stage = '0'; // 0 = semente, 1 = crescendo, 2 = pronto
                 
-                game.appendChild(corn);
+                corn.addEventListener('click', () => harvestCorn(corn));
                 
-                // Começa o crescimento
-                growCorn(corn);
+                gameContainer.appendChild(corn);
+                
+                startGrowth(corn);
             }
         }
 
-        function growCorn(corn) {
+        function startGrowth(corn) {
             setTimeout(() => {
-                if (corn.dataset.stage == 0) {
+                if (corn.dataset.stage === '0') {
                     corn.textContent = '🌿';
-                    corn.dataset.stage = 1;
+                    corn.dataset.stage = '1';
                     corn.classList.remove('growing');
                 }
-            }, growthSpeed / 2);
+            }, growthSpeed * 0.6);
 
             setTimeout(() => {
-                if (corn.dataset.stage == 1) {
+                if (corn.dataset.stage === '1') {
                     corn.textContent = '🌽';
-                    corn.dataset.stage = 2;
+                    corn.dataset.stage = '2';
                     corn.classList.add('ready');
                 }
             }, growthSpeed);
         }
 
-        function harvest(corn) {
-            if (corn.dataset.stage == 2) {
+        function harvestCorn(corn) {
+            if (corn.dataset.stage === '2') {
                 score++;
-                money += 15;
+                money += 18;
                 
                 scoreEl.textContent = score;
                 moneyEl.textContent = money;
-                
-                // Efeito de colheita
-                corn.style.transition = 'all 0.3s';
-                corn.style.transform = 'scale(0)';
+
+                corn.classList.add('harvested');
                 
                 setTimeout(() => {
+                    corn.classList.remove('harvested', 'ready');
                     corn.textContent = '🌱';
-                    corn.style.transform = 'scale(1)';
-                    corn.dataset.stage = 0;
-                    corn.classList.remove('ready');
-                    growCorn(corn);
-                }, 300);
+                    corn.dataset.stage = '0';
+                    startGrowth(corn);
+                }, 400);
             }
         }
 
         function plantAll() {
-            const corns = document.querySelectorAll('.corn');
-            corns.forEach(corn => {
-                if (corn.dataset.stage == 0) {
+            document.querySelectorAll('.corn').forEach(corn => {
+                if (corn.dataset.stage === '0') {
                     corn.textContent = '🌱';
-                    corn.dataset.stage = 0;
-                    growCorn(corn);
+                    startGrowth(corn);
                 }
             });
         }
 
         function sellAll() {
             if (score > 0) {
-                money += score * 15;
+                const earned = score * 18;
+                money += earned;
                 moneyEl.textContent = money;
-                alert(`Você vendeu ${score} milhos por R$${score * 15}!`);
+                
+                alert(`✅ Você vendeu ${score} milhos e ganhou R$ ${earned}!`);
                 score = 0;
                 scoreEl.textContent = score;
             }
         }
 
         function upgradeSpeed() {
-            if (money >= 50) {
-                money -= 50;
+            if (money >= 80) {
+                money -= 80;
                 moneyEl.textContent = money;
-                growthSpeed = Math.max(1000, growthSpeed - 500);
-                alert('Velocidade de crescimento melhorada!');
+                growthSpeed = Math.max(800, growthSpeed - 450);
+                level++;
+                speedEl.textContent = level;
+                
+                alert('🚀 Velocidade de crescimento melhorada!');
             } else {
-                alert('Dinheiro insuficiente!');
+                alert('💰 Dinheiro insuficiente!');
             }
         }
 
         // Iniciar o jogo
-        createCorn();
+        window.onload = () => {
+            createCornField();
+        };
     </script>
 
 </body>
